@@ -1,4 +1,5 @@
 PROMPT: what is the best way to trach oponents location in a SUMO competition based on 3 TOF sensor placing +45, -45, 0 degree and output turning strenght based on how far the oponent and which sensor are deteting. The sensors im using are VL53L0X and i already implement the reading from sensor to output value 0 to 255 equilvalent to closest and farest?
+
 OUTPUT:
 Here's a solid approach for opponent tracking and steering control using 3 VL53L0X TOF sensors at +45°, 0°, and -45°:
 
@@ -108,6 +109,7 @@ float push_counter() {
 This is a simple but effective method. For more advanced approaches (Kalman filter tracking, PID steering loops, or edge-detection strategies), let me know your microcontroller specs and I can refine further.
 //==============================================================================//
 PROMPT: what is the mathmatical behind weighted vector sum approach
+
 OUTPUT:
 Mathematical Foundation of the Weighted Vector Sum Approach
 The core idea comes from center of mass calculations in physics, applied to angular space.
