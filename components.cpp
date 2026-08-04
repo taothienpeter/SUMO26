@@ -1,9 +1,9 @@
+#include "HardwareSerial.h"
 #include "Arduino.h"
 // #include <EEPROM.h>
 #include "components.h"
 
-void logSerial(String s)
-{
+void logSerial(String s) {
   Serial.println(s);
 }
 
@@ -25,7 +25,7 @@ ISR(TIMER2_OVF_vect) {
   cnt++;
 }
 //------------------------------indicator LED---------------------------//
-void RGB_loading(){
+void RGB_loading() {
   switch (millis() / 100 % 3) {
     case 0:
       RGB(255, 0, 0);
@@ -39,31 +39,38 @@ void RGB_loading(){
     default: break;
   }
 }
-void RGB(short r, bool g, bool b){
+void RGB(short r, bool g, bool b) {
   analogWrite(RED, 255 - r);
   digitalWrite(GREEN, !g);
   digitalWrite(BLUE, !b);
 }
 //---------------------------------------------------------------------//
-void BUZZ(short type){
+void BUZZ(short type) {
   switch (type) {
-    case 0: // start up
-      tone(BUZZER, 1047, 80);  delay(80);  // Quick C6
-      tone(BUZZER, 1319, 80);  delay(80);  // Quick E6
-      tone(BUZZER, 1568, 150); delay(150); // Sustained G6
+    case 0:  // start up
+      tone(BUZZER, 1047, 80);
+      delay(80);  // Quick C6
+      tone(BUZZER, 1319, 80);
+      delay(80);  // Quick E6
+      tone(BUZZER, 1568, 150);
+      delay(150);  // Sustained G6
       noTone(BUZZER);
       break;
-    case 1: // selecting
-      tone(BUZZER, 2500, 50); delay(50);
-      noTone(BUZZER);
-      break; 
-    case 2: // run ready
-      tone(BUZZER, 1047, 60);  delay(60);  // C6
-      tone(BUZZER, 1568, 60);  delay(60);  // G6
-      tone(BUZZER, 2093, 200); delay(200); // Triumphant C7
+    case 1:  // selecting
+      tone(BUZZER, 2500, 50);
+      delay(50);
       noTone(BUZZER);
       break;
-    default: break; 
+    case 2:  // run ready
+      tone(BUZZER, 1047, 60);
+      delay(60);  // C6
+      tone(BUZZER, 1568, 60);
+      delay(60);  // G6
+      tone(BUZZER, 2093, 200);
+      delay(200);  // Triumphant C7
+      noTone(BUZZER);
+      break;
+    default: break;
   }
 }
 //------------------------------Sensor----------------------------------//
@@ -72,15 +79,16 @@ void BUZZ(short type){
 //     compare_value[i] = EEPROM.read(i) * 4;
 //   }
 // }
-// EEPROM.put(addr, compare_value); 
-// EEPROM.get(addr, compare_value); 
+// EEPROM.put(addr, compare_value);
+// EEPROM.get(addr, compare_value);
 
-void calibIR(){ // tính toán khoảng giá trị max, min, ngưỡng sáng tối
-  for(int i = 0; i< 2; i++){
+void calibIR() {  // tính toán khoảng giá trị max, min, ngưỡng sáng tối
+  for (int i = 0; i < 2; i++) {
     if (IRS_blackVal[i] == 0) IRS_blackVal[i] = 1100;
-    if(IR_values[i] < IRS_blackVal[i]) IRS_blackVal[i] = IR_values[i];
-    if(IR_values[i] > IRS_whiteVal[i])  IRS_whiteVal[i] = IR_values[i]; 
-    IRS_threshold[i] = (IRS_whiteVal[i] + IRS_blackVal[i])/2;
+    if (IR_values[i] < IRS_blackVal[i]) IRS_blackVal[i] = IR_values[i];
+    if (IR_values[i] > IRS_whiteVal[i]) IRS_whiteVal[i] = IR_values[i];
+    IRS_threshold[i] = (IRS_whiteVal[i] + IRS_blackVal[i]) / 2;
+    
   }
   // BUZZ(2);
 }
@@ -170,27 +178,25 @@ void read_sensor()  // hàm đọc cảm biến
   lastPos = i;
 }
 */
-void tcaselect(uint8_t channel) 
-{
+void tcaselect(uint8_t channel) {
   if (channel > 7) return;
   Wire.beginTransmission(TCAADDR);
   Wire.write(1 << channel);
-  Wire.endTransmission();  
+  Wire.endTransmission();
 }
-bool initI2Csensors() 
-{
-  Wire.begin(); 
-  // Wire.setWireTimeout(3000, true); 
+bool initI2Csensors() {
+  Wire.begin();
+  // Wire.setWireTimeout(3000, true);
 
   // 1. Initialize ToF Sensors (Channels 0 to 2)
   for (uint8_t i = 0; i < NUM_SENSORS; i++) {
     tcaselect(i);
     // lox[i].setTimeout(500);
     if (!lox[i].init()) {
-      Serial.print("ToF Sensor "); 
-      Serial.print(i); 
+      Serial.print("ToF Sensor ");
+      Serial.print(i);
       Serial.println(" failed to initialize!");
-      return false; 
+      return false;
     }
     lox[i].startContinuous();
   }
@@ -198,59 +204,98 @@ bool initI2Csensors()
   // 2. Initialize BNO055 IMU (Channel 3)
   tcaselect(IMU_CH);
   bno.reset();
-  delay(50); // Short pause for IMU reset cycle to clear
+  delay(50);  // Short pause for IMU reset cycle to clear
 
   if (bno.begin() != DFRobot_BNO055_IIC::eStatusOK) {
     Serial.println("FAILED!");
     return false;
   }
   Serial.println("SUCCESS!");
-  return true; 
+  return true;
 }
-void readTOF(uint8_t distances[]) 
-{
+void readTOF(uint8_t distances[]) {
   for (uint8_t i = 0; i < NUM_SENSORS; i++) {
     tcaselect(i);
-    
+
     if (lox[i].timeoutOccurred()) {
-      distances[i] = 0; // Error fallback value
+      distances[i] = 0;  // Error fallback value
     } else {
       distances[i] = lox[i].readRangeContinuousMillimeters();
     }
   }
 }
-void readIMU(float IMU_values[]) 
-{
+void readIMU(float IMU_values[], float IMU_AccValues[]) {
   tcaselect(IMU_CH);
   DFRobot_BNO055_IIC::sEulAnalog_t sEul = bno.getEul();
-  
+
   IMU_values[0] = sEul.roll;
   IMU_values[1] = sEul.pitch;
-  IMU_values[2] = sEul.head; // '.head' represents the Yaw/Heading angle in the DFRobot library
+  IMU_values[2] = sEul.head;  // '.head' represents the Yaw/Heading angle in the DFRobot library
+
+  DFRobot_BNO055_IIC::sAxisAnalog_t sLiA = bno.getAxis(DFRobot_BNO055_IIC::eAxisLia);
+
+  IMU_AccValues[0] = sLiA.x;
+  IMU_AccValues[1] = sLiA.y;
+  IMU_AccValues[2] = sLiA.z;
 }
-void readIR(uint8_t IR_values[]){
+void readIR(uint8_t IR_values[]) {
 
   IR_values[0] = analogRead(A0);
   IR_values[1] = analogRead(A1);
   IR_values[2] = analogRead(A3);
+  IR_values[0] = 255;
+  IR_values[1] = 255;
+  IR_values[2] = 255;
 }
 //-----------------------------Strategy--------------------------------//
-bool isEnemyDetected(uint8_t TOF_distance[]){
-  for (short i =0; i<NUM_SENSORS; i++){
-    if(TOF_distance[i]<250) return 1; 
+bool isEnemyDetected(uint8_t TOF_distance[]) {
+  
+  Serial.print(TOF_distance[0]);
+  Serial.print("\t");
+  Serial.print(TOF_distance[1]);
+  Serial.print("\t");
+  Serial.println(TOF_distance[2]);
+  for (short i = 0; i < NUM_SENSORS; i++) {
+    if (TOF_distance[i] < ENEMY_THRESHOLD) return 1;
+    
   }
   return 0;
 }
-bool isEdgeDetected(uint8_t IR_values[]){
-  if(IR_values[0] < 100 || IR_values[1] < 100 || IR_values[2] < 100) return 1;
+bool isEdgeDetected(uint8_t IR_values[]) {
+  if (IR_values[0] < 100 || IR_values[1] < 100 || IR_values[2] < 100) return 1;
   return 0;
 }
-//------------------------------Motor----------------------------------//
-void handleAndSpeed(int speed1, int angle) 
+float turnFactor(uint8_t TOF_distance[]) {
+  float raw, total, turnFactor;
+  raw = TOF_distance[0] - TOF_distance[2];
+  total = 765 - (TOF_distance[0] + TOF_distance[2] + TOF_distance[1]);
+  //steering = (raw) / (total);
+  //aggression = (raw*raw + total*total) / (255*255);
+  turnFactor = ((raw) / (total)) * ((raw * raw + total * total) / (255 * 255));
+
+  return turnFactor;
+}
+
+
+void littleBitchDrive(float IMU_values[])
 {
+  if (abs(IMU_values[0]) > 15)
+    vectorDrive(255, IMU_values[0]/60);
+  if ((IMU_values[1]) > 15)
+    simpleDrive(255, 0);
+  else if (IMU_values[1] < -15)
+    simpleDrive(-255, 0);
+
+  //adding a timer for full on ground
+}
+//------------------------------Motor----------------------------------//
+void simpleDrive(int speed1, int angle) {
   speed_run(speed1 + angle, speed1 - angle);
 }
 
+void vectorDrive(float speed2, float turnFactor) {
+  speed_run(speed2 + (turnFactor * speed2), speed2 - (turnFactor * speed2));
+}
 
 void speed_run(int speedDC_left, int speedDC_right)  // hàm truyền vào tốc độ động cơ trái + phải
 {
